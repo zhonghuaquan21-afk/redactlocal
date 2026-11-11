@@ -1,0 +1,47 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # No dependencies to install — the project is dependency-free by design.
+      - name: Run test suite (both builds)
+        run: npm test
+
+      # The Chinese build is generated from index.html. If the committed copy has
+      # drifted, contributors will silently test stale code — so fail loudly here.
+      - name: Verify cn/ build is up to date
+        run: |
+          node build-cn.js
+          if ! git diff --quiet -- cn/index.html; then
+            echo "::error::cn/index.html is out of date. Run 'npm run build:cn' and commit the result."
+            git diff --stat -- cn/index.html
+            exit 1
+          fi
+          echo "cn/index.html is up to date."
+
+      # Guard the core promise of the project: no network calls in the shipped file.
+      - name: Verify no network calls in shipped HTML
+        run: |
+          if grep -nE 'fetch\(|XMLHttpRequest|sendBeacon|navigator\.sendBeacon' index.html cn/index.html; then
+            echo "::error::Shipped HTML contains network APIs. This project must stay fully local."
+            exit 1
+          fi
+          echo "No network APIs found."

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RedactLocal — Redact PII before you paste it into AI</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0f14'/%3E%3Ccircle cx='16' cy='16' r='8' fill='%233ddc97'/%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#0f151d; --line:#1f2a37;
+    --text:#e6edf3; --muted:#8b98a8; --accent:#3ddc97; --accent2:#4da3ff;
+    --warn:#ffb454; --danger:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+    display:flex; flex-direction:column; min-height:100%;
+  }
+  header{
+    display:flex; align-items:center; gap:14px; padding:10px 18px;
+    border-bottom:1px solid var(--line); background:var(--panel2); flex-wrap:wrap;
+  }
+  .logo{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.2px}
+  .logo .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .badge.ok{color:var(--accent);border-color:#1d4d38;background:#0d1f18}
+  .spacer{flex:1}
+  button, select, input, textarea{font-family:inherit;font-size:13px}
+  button{
+    background:#17202b; color:var(--text); border:1px solid var(--line);
+    padding:7px 12px; border-radius:8px; cursor:pointer; transition:.15s;
+  }
+  button:hover{background:#1e2a38;border-color:#2c3d50}
+  button.primary{background:var(--accent);color:#052014;border-color:var(--accent);font-weight:600}
+  button.primary:hover{filter:brightness(1.08)}
+  button.ghost{background:transparent}
+  button.small{padding:4px 9px;font-size:12px;border-radius:6px}
+  main{display:grid;grid-template-columns:320px 1fr;flex:1;min-height:0}
+  @media (max-width:900px){ main{grid-template-columns:1fr} }
+  aside{
+    border-right:1px solid var(--line); background:var(--panel); overflow:auto; padding:14px;
+  }
+  .sect{margin-bottom:16px}
+  .sect h3{margin:0 0 8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .det{
+    display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;cursor:pointer;
+    border:1px solid transparent;
+  }
+  .det:hover{background:#161f2a}
+  .det input{accent-color:var(--accent);margin:0}
+  .det .nm{flex:1}
+  .det .cnt{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .det .cnt.hit{color:var(--accent)}
+  .work{display:flex;flex-direction:column;min-height:0}
+  .tabs{display:flex;gap:4px;padding:10px 14px 0;border-bottom:1px solid var(--line);background:var(--panel2)}
+  .tab{padding:7px 14px;border-radius:8px 8px 0 0;cursor:pointer;color:var(--muted);border:1px solid transparent;border-bottom:none}
+  .tab.active{background:var(--panel);color:var(--text);border-color:var(--line)}
+  .pane{flex:1;display:none;min-height:0;padding:14px}
+  .pane.active{display:flex;flex-direction:column;gap:10px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0}
+  @media (max-width:1100px){ .cols{grid-template-columns:1fr} }
+  .col{display:flex;flex-direction:column;min-height:0;gap:6px}
+  .colhead{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  textarea{
+    flex:1;min-height:180px;resize:none;background:var(--panel2);color:var(--text);
+    border:1px solid var(--line);border-radius:10px;padding:12px;line-height:1.6;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;outline:none;width:100%;
+  }
+  textarea:focus{border-color:#2c4a63;box-shadow:0 0 0 3px #12293b}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .stat{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:2px 4px}
+  .stat b{color:var(--text);font-variant-numeric:tabular-nums}
+  table{width:100%;border-collapse:collapse;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:100%}
+  .drop{
+    border:1.5px dashed #2a3a4c;border-radius:12px;padding:26px;text-align:center;color:var(--muted);
+    background:var(--panel2);cursor:pointer;transition:.15s;
+  }
+  .drop:hover,.drop.over{border-color:var(--accent);color:var(--text);background:#0f1b17}
+  code{background:#0d141c;border:1px solid var(--line);padding:1px 5px;border-radius:5px;font-size:12px}
+  .lic{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:none;gap:8px;flex-direction:column}
+  .lic.show{display:flex}
+  .lic input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px;width:100%}
+  footer{padding:7px 18px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px;display:flex;gap:14px;flex-wrap:wrap;background:var(--panel2)}
+  .hidden{display:none!important}
+  .pill{font-size:11px;padding:2px 7px;border-radius:6px;background:#1a2531;border:1px solid var(--line);color:var(--muted)}
+  .pill.pro{color:#052014;background:var(--accent);border-color:var(--accent);font-weight:700}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.5}
+  a{color:var(--accent2)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="dot"></span>RedactLocal</div>
+  <span class="badge ok" id="offlineBadge">100% local · no upload</span>
+  <span class="badge" id="planBadge">Free</span>
+  <div class="spacer"></div>
+  <select id="lang" title="Language">
+    <option value="en">English</option>
+    <option value="zh">中文</option>
+  </select>
+  <button class="ghost small" id="btnUnlock" data-i18n="unlock">Unlock Pro</button>
+</header>
+
+<main>
+  <aside>
+    <div class="sect">
+      <h3 data-i18n="detectors">What to redact</h3>
+      <div id="detList"></div>
+    </div>
+
+    <div class="sect">
+      <h3 data-i18n="mode">Replacement style</h3>
+      <select id="mode" style="width:100%;padding:8px;border-radius:8px;background:#0f151d;color:#e6edf3;border:1px solid var(--line)">
+        <option value="placeholder" data-i18n-opt="placeholder">[EMAIL_1] — placeholder</option>
+        <option value="mask" data-i18n-opt="mask">a***@***.com — partial mask</option>
+        <option value="hash" data-i18n-opt="hash">EMAIL_3f2a91c4 — stable hash</option>
+        <option value="remove" data-i18n-opt="remove">remove entirely</option>
+      </select>
+      <div class="note" style="margin-top:6px" data-i18n="modeNote">Placeholders are reversible: keep the mapping file to restore the original text later.</div>
+      <label class="det" style="margin-top:10px;padding-left:0" title="">
+        <input type="checkbox" id="cardStrict" />
+        <span class="nm" style="font-size:12px;color:var(--muted)" data-i18n="cardStrict">Only redact cards that pass the Luhn check</span>
+      </label>
+    </div>
+
+    <div class="sect">
+      <h3 data-i18n="custom">Custom rule (Pro)</h3>
+      <input id="customRe" placeholder="e.g. EMP-\d{6}" style="width:100%;background:#0f151d;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px" />
+      <button class="small" id="btnApplyCustom" style="margin-top:6px" data-i18n="applyRule">Apply rule</button>
+    </div>
+
+    <div class="lic" id="licBox">
+      <div style="font-weight:600" data-i18n="licTitle">Unlock Pro</div>
+      <div class="note" data-i18n="licNote">Paste the license key from your purchase email. Works offline, no account needed.</div>
+      <input id="licKey" placeholder="RL-XXXX-XXXX-XXXX" />
+      <div class="row">
+        <button class="primary small" id="btnActivate" data-i18n="activate">Activate</button>
+        <a id="buyLink" href="#" target="_blank" rel="noopener" style="text-decoration:none;color:var(--accent);font-size:12px;font-weight:600" data-i18n="buy">Buy Pro →</a>
+        <span class="note" id="licMsg"></span>
+      </div>
+    </div>
+  </aside>
+
+  <section class="work">
+    <div class="tabs">
+      <div class="tab active" data-tab="text" data-i18n="tabText">Text</div>
+      <div class="tab" data-tab="files" data-i18n="tabFiles">Batch files</div>
+      <div class="tab" data-tab="restore" data-i18n="tabRestore">Restore</div>
+    </div>
+
+    <div class="pane active" id="pane-text">
+      <div class="cols">
+        <div class="col">
+          <div class="colhead">
+            <span data-i18n="input">Input</span>
+            <div class="spacer"></div>
+            <button class="small ghost" id="btnSample" data-i18n="sample">Load sample</button>
+            <button class="small ghost" id="btnClear" data-i18n="clear">Clear</button>
+          </div>
+          <textarea id="src" spellcheck="false" placeholder="Paste a support ticket, email thread, spreadsheet column or API log here…"></textarea>
+          <div class="stat">
+            <span><span data-i18n="chars">Characters</span> <b id="stChars">0</b></span>
+            <span><span data-i18n="found">Found</span> <b id="stFound">0</b></span>
+          </div>
+        </div>
+        <div class="col">
+          <div class="colhead">
+            <span data-i18n="output">Redacted</span>
+            <div class="spacer"></div>
+            <button class="small ghost" id="btnCopy" data-i18n="copy">Copy</button>
+            <button class="small ghost" id="btnDl" data-i18n="download">Download</button>
+          </div>
+          <textarea id="out" spellcheck="false" readonly placeholder="Redacted text appears here."></textarea>
+          <div class="stat">
+            <span><span data-i18n="removed">Items replaced</span> <b id="stRepl">0</b></span>
+            <span id="limitMsg" class="pill hidden"></span>
+            <span id="cardWarn" class="pill hidden" style="color:var(--warn);border-color:#5a4320;background:#1d1608"></span>
+          </div>
+        </div>
+      </div>
+      <div class="scroll" style="max-height:170px">
+        <table>
+          <thead><tr><th data-i18n="thPlaceholder">Placeholder</th><th data-i18n="thType">Type</th><th data-i18n="thOriginal">Original</th></tr></thead>
+          <tbody id="mapBody"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <button class="small" id="btnDlMap" data-i18n="dlMap">Download mapping (CSV)</button>
+        <span class="note" data-i18n="mapNote">The mapping never leaves your device. Delete it once you are done.</span>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-files">
+      <div class="drop" id="drop">
+        <div style="font-size:15px;margin-bottom:6px" data-i18n="dropTitle">Drop CSV / TXT files here</div>
+        <div class="note" data-i18n="dropNote">Or click to choose. Every cell is scanned, the file structure is kept. Nothing is uploaded.</div>
+        <input type="file" id="fileInput" multiple accept=".csv,.txt,.tsv,.md,.json,.log" class="hidden" />
+      </div>
+      <div class="scroll" style="flex:1">
+        <table>
+          <thead><tr><th data-i18n="thFile">File</th><th data-i18n="thRows">Rows</th><th data-i18n="thHits">Redactions</th><th></th></tr></thead>
+          <tbody id="fileBody"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <button class="small primary" id="btnDlAll" data-i18n="dlAll">Download all redacted</button>
+        <button class="small" id="btnDlAllMap" data-i18n="dlAllMap">Download mappings</button>
+        <span class="note" id="fileMsg"></span>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-restore">
+      <div class="note" data-i18n="restoreNote">Paste the redacted text and its mapping CSV to get the original back. Useful when an AI answer must be re-personalised.</div>
+      <div class="cols">
+        <div class="col">
+          <div class="colhead"><span data-i18n="restoreText">Redacted text</span></div>
+          <textarea id="rSrc" spellcheck="false" placeholder="[EMAIL_1] wrote to [PHONE_1]…"></textarea>
+        </div>
+        <div class="col">
+          <div class="colhead"><span data-i18n="restoreMap">Mapping CSV</span></div>
+          <textarea id="rMap" spellcheck="false" placeholder="placeholder,type,original&#10;[EMAIL_1],email,jane@acme.com"></textarea>
+        </div>
+      </div>
+      <div class="row"><button class="primary small" id="btnRestore" data-i18n="restoreBtn">Restore original</button></div>
+      <textarea id="rOut" readonly placeholder="Restored text…"></textarea>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span data-i18n="foot1">No network calls. No telemetry. Files are parsed in this browser tab only.</span>
+  <div class="spacer"></div>
+  <span id="ver">v1.0.0</span>
+</footer>
+
+<script>
+/* ============================ config ============================ */
+// 开源发布：全部功能免费，界面上不出现任何付费入口。
+// 改成 false 可恢复门控（用于将来做"支持者版本"），代码路径保持完整。
+const FULLY_FREE = true;
+
+// 仅在 FULLY_FREE = false 时使用
+const BUY_URL = "https://redactlocal.gumroad.com/l/pro";
+const PRICE = "$29";
+
+/* ============================ i18n ============================ */
+const I18N = {
+  en: {
+    unlock:"Unlock Pro", detectors:"What to redact", mode:"Replacement style",
+    "placeholder":"[EMAIL_1] — placeholder", mask:"a***@***.com — partial mask",
+    hash:"EMAIL_3f2a91c4 — stable hash", remove:"remove entirely",
+    modeNote:"Placeholders are reversible: keep the mapping file to restore the original text later.",
+    custom:"Custom rule (Pro)", applyRule:"Apply rule", licTitle:"Unlock Pro",
+    licNote:"Paste the license key from your purchase email. Works offline, no account needed.",
+    activate:"Activate", tabText:"Text", tabFiles:"Batch files", tabRestore:"Restore",
+    input:"Input", sample:"Load sample", clear:"Clear", output:"Redacted",
+    copy:"Copy", download:"Download", chars:"Characters", found:"Found",
+    removed:"Items replaced", thPlaceholder:"Placeholder", thType:"Type",
+    thOriginal:"Original", dlMap:"Download mapping (CSV)",
+    mapNote:"The mapping never leaves your device. Delete it once you are done.",
+    dropTitle:"Drop CSV / TXT files here",
+    dropNote:"Or click to choose. Every cell is scanned, the file structure is kept. Nothing is uploaded.",
+    thFile:"File", thRows:"Rows", thHits:"Redactions", dlAll:"Download all redacted",
+    dlAllMap:"Download mappings",
+    restoreNote:"Paste the redacted text and its mapping CSV to get the original back. Useful when an AI answer must be re-personalised.",
+    restoreText:"Redacted text", restoreMap:"Mapping CSV", restoreBtn:"Restore original",
+    foot1:"No network calls. No telemetry. Files are parsed in this browser tab only.",
+    free:"Free", pro:"Pro", limit:"Free limit reached",
+    proOnly:"Pro feature — click Unlock Pro",
+    noHits:"No sensitive items detected.",
+    activated:"Pro unlocked. Thank you!", badKey:"Invalid key",
+    copied:"Copied", customAdded:"Rule added", buy:"Buy Pro →",
+    upsell:"Free limit reached — Unlock Pro (unlimited text + batch files)",
+    cardStrict:"Only redact cards that pass the Luhn check (may miss typos)",
+    weakWarn:"card-like number without a valid Luhn check — redacted anyway"
+  },
+  zh: {
+    unlock:"解锁 Pro", detectors:"要脱敏的内容", mode:"替换方式",
+    "placeholder":"[EMAIL_1] — 占位符", mask:"a***@***.com — 部分打码",
+    hash:"EMAIL_3f2a91c4 — 稳定哈希", remove:"直接删除",
+    modeNote:"占位符可逆：保留映射表，之后可以把原文还原回来。",
+    custom:"自定义规则（Pro）", applyRule:"应用规则", licTitle:"解锁 Pro",
+    licNote:"粘贴购买邮件里的授权码，离线校验，无需注册账号。",
+    activate:"激活", tabText:"文本", tabFiles:"批量文件", tabRestore:"还原",
+    input:"原文", sample:"载入示例", clear:"清空", output:"脱敏结果",
+    copy:"复制", download:"下载", chars:"字符数", found:"命中",
+    removed:"已替换", thPlaceholder:"占位符", thType:"类型",
+    thOriginal:"原始值", dlMap:"下载映射表（CSV）",
+    mapNote:"映射表只在本机，用完请删除。",
+    dropTitle:"把 CSV / TXT 文件拖进来",
+    dropNote:"或点击选择。逐单元格扫描，保留文件结构，不上传任何数据。",
+    thFile:"文件", thRows:"行数", thHits:"脱敏次数", dlAll:"下载全部脱敏文件",
+    dlAllMap:"下载映射表",
+    restoreNote:"粘贴脱敏后的文本和映射表，即可还原原文。适合让 AI 回答后再回填真实信息。",
+    restoreText:"脱敏文本", restoreMap:"映射表 CSV", restoreBtn:"还原原文",
+    foot1:"全程无网络请求、无埋点。文件只在这个浏览器标签页里解析。",
+    free:"免费版", pro:"专业版", limit:"已达免费版上限",
+    proOnly:"Pro 功能 — 请点「解锁 Pro」",
+    noHits:"没有检测到敏感信息。",
+    activated:"Pro 已解锁，谢谢！", badKey:"授权码无效",
+    copied:"已复制", customAdded:"规则已添加", buy:"购买 Pro →",
+    upsell:"已达免费版上限 — 解锁 Pro（不限长度 + 批量文件）",
+    cardStrict:"只遮蔽通过 Luhn 校验的卡号（可能漏掉打错的）",
+    weakWarn:"疑似卡号未通过 Luhn 校验，已按保守策略遮蔽"
+  }
+};
+let LANG = localStorage.getItem("rl_lang") || "en";
+const T = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+
+/* ============================ detectors ============================ */
+const kept = (s, head, tail, ch="*") => {
+  if (s.length <= head + tail + 1) return ch.repeat(Math.max(4, s.length));
+  return s.slice(0, head) + ch.repeat(s.length - head - tail) + s.slice(s.length - tail);
+};
+const maskEmail = m => {
+  const [u, d] = m.split("@");
+  const tld = (d.split(".").pop() || "");
+  return kept(u,1,0) + "@" + "*".repeat(3) + (tld ? "." + tld : "");
+};
+const maskPhone = m => {
+  const digits = m.replace(/\D/g, "");
+  if (digits.length >= 8) return kept(m, 3, 4);
+  return kept(m, 1, 1);
+};
+const maskCard = m => {
+  const d = m.replace(/\D/g, "");
+  return "**** **** **** " + d.slice(-4);
+};
+
+// Luhn for credit cards
+function luhn(num){
+  const d = num.replace(/\D/g,"");
+  if (d.length < 13 || d.length > 19) return false;
+  let sum = 0, alt = false;
+  for (let i = d.length - 1; i >= 0; i--){
+    let n = +d[i];
+    if (alt){ n *= 2; if (n > 9) n -= 9; }
+    sum += n; alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+
+// When Luhn fails we still redact — but only if the number actually looks like a card.
+// Otherwise every 18-digit order number becomes a false positive.
+function looksLikeCard(raw){
+  const d = raw.replace(/\D/g,"");
+  if (d.length < 13 || d.length > 19) return false;
+  if (/[\s\-]/.test(raw)) return true;                 // grouped: 4111 1111 1111 1111
+  if (/^[456]/.test(d)) return true;                   // Visa / Mastercard / UnionPay-Discover
+  if (/^(34|37|35|30|36|38)/.test(d)) return true;     // Amex / JCB / Diners
+  return false;
+}
+
+const DETECTORS = [
+  { id:"email", en:"Email address", zh:"邮箱", re:/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g, mask:maskEmail },
+  // 允许组间分隔符：Excel 导出的手机号常写成 138 1234 5678 / 138-1234-5678。
+  // 只允许分隔符出现在 3-4-4 的位置，避免把日期（2024-01-15）吞掉。
+  { id:"phone_cn", en:"Phone (CN mobile)", zh:"手机号", re:/(?<!\d)(?:\+?86[\s\-]?)?1[3-9]\d[\s\-]?\d{4}[\s\-]?\d{4}(?!\d)/g, mask:maskPhone },
+  { id:"phone_intl", en:"Phone (international)", zh:"国际电话", re:/(?<!\d)\+\d{1,3}[\s\-.]?\(?\d{1,4}\)?[\s\-.]?\d{3,4}[\s\-.]?\d{3,4}(?!\d)/g, mask:maskPhone },
+  { id:"id_cn", en:"ID card (CN 18-digit)", zh:"身份证号", re:/(?<!\d)[1-9]\d{5}(?:18|19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx](?!\d)/g, mask:m => kept(m,4,2) },
+  { id:"card", en:"Bank / credit card", zh:"银行卡 / 信用卡", re:/(?<!\d)(?:\d[ \-]?){12,18}\d(?!\d)/g, soft:luhn, mask:maskCard },
+  { id:"ipv4", en:"IP address", zh:"IP 地址", re:/\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g, mask:m => kept(m,3,0,"x") },
+  { id:"api_key", en:"API key / token", zh:"API 密钥 / Token", re:/(?:sk-[A-Za-z0-9_\-]{16,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[baprs]-[A-Za-z0-9\-]{10,}|Bearer\s+(?!eyJ)[A-Za-z0-9._\-]{20,})/g, mask:m => kept(m, 6, 0) },
+  { id:"jwt", en:"JWT", zh:"JWT 令牌", re:/eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}/g, mask:() => "eyJ****.****.****" },
+  // Labels need a real separator (：/space). Allowing zero separators made "用户姓名：" eat 姓名 itself.
+  // "客户张三，…" still works through the second branch, guarded against label words.
+  { id:"cn_name", en:"Chinese name (context)", zh:"中文姓名（带上下文）",
+    re:/(?<=(?:姓名|联系人|收件人|法人|申请人|用户名)[：:\s]+)[\u4e00-\u9fa5]{2,4}|(?<=(?:客户|用户))(?!(?:姓名|编号|名称|电话|地址|手机|邮箱|身份|账号|等级|偏好|信息|资料))[\u4e00-\u9fa5]{2,3}(?=[，。、；：,;:（）()【】「」\s])/g,
+    mask:m => kept(m,1,0) },
+  // 单姓 + 尊称（王女士/李经理）是中文里最常见的写法，所以允许 1 个汉字；
+  // 但要用负向断言挡掉「该/此/这/位/男/女」这类量词、代词，否则会把"该女士"里的"该"当成姓。
+  { id:"cn_name_honor", en:"Chinese name + 先生/女士", zh:"中文姓名 + 先生/女士", re:/(?!(?:该|此|这|那|位|男|女|的|一|某|各))[\u4e00-\u9fa5]{1,3}(?=(?:先生|女士|小姐|老师|经理|总监))|(?<=(?:我叫|我是|同事|客户)[：:\s]{0,2})[\u4e00-\u9fa5]{2,3}/g, mask:m => kept(m,1,0) },
+  { id:"cn_addr", en:"Chinese address (context)", zh:"中文地址（带上下文）", re:/(?<=(?:地址|住址|收货地址)(?:[：:\s]+|为))[^\s：:,;，；][^\n,;，；]{5,59}/g, mask:m => kept(m,3,0) },
+  { id:"identifier", en:"User / customer ID", zh:"用户 / 客户编号",
+    re:/(?<=(?:用户编号|用户ID|客户编号|客户ID|会员编号|会员号|工号|账号|账户)[：:\s]+)[A-Za-z0-9_\-]{4,40}|(?<=用户)[A-Z][A-Z0-9]{5,30}/g,
+    mask:m => kept(m,2,0) },
+  // Lookbehind so only the VALUE is replaced: "X-Token: [SECRET_KV_1]" keeps the header readable for the model.
+  // Chinese keywords + full-width colon are required for payloads like 「密钥套件：…」.
+  { id:"secret_kv", en:"password / secret value", zh:"密码 / 密钥值", re:/(?<=(?:password|passwd|pwd|secret|token|api[_-]?key|密钥|密码|口令|令牌)[a-z_\u4e00-\u9fa5]*["']?\s*[：:=]\s*["']?)[^\s"',;，；]{4,}/gi, mask:m => kept(m,2,0) }
+];
+
+/* ===== Key-aware detection =====
+ * In JSON / logs / API payloads the semantics live in the KEY, not in the value.
+ * `"address": "江西省…"` has no 地址： prefix, so value-shape rules alone miss it.
+ * Keys are treated the same way a CSV column header is: a strong hint, not a proof.
+ */
+const EXTRA_TYPES = {
+  person:   { en:"Person name", zh:"姓名",   mask:m => kept(m,1,0) },
+  addr:     { en:"Address",     zh:"地址",   mask:m => kept(m,3,0) },
+  postcode: { en:"Postal code", zh:"邮编",   mask:m => kept(m,2,0) }
+};
+
+const KEY_RULES = [
+  // anything about a product/file/company is NOT a person, even though it ends in _name
+  { skip:true, kws:["goods","product","item","file","company","brand","model","device","merchant","shop"] },
+  { type:"id_cn",      kws:["id_card","idcard","id_no","identity","身份证"] },
+  { type:"identifier", kws:["userid","user_id","uid","customerid","customer_id","memberid","member_id","accountid","account_id","编号"] },
+  { type:"card",       kws:["bank_card","card_no","card_number","account_no","卡号","银行卡"] },
+  { type:"phone_cn",   kws:["phone","mobile","tel","手机","电话"] },
+  { type:"email",      kws:["email","mail","邮箱"] },
+  { type:"secret_kv",  kws:["password","passwd","pwd","secret","token","api_key","apikey","private_key","密钥","密码"] },
+  { type:"postcode",   kws:["postcode","post_code","zip","邮编"] },
+  { type:"addr",       kws:["address","addr","地址","住址"] },
+  { type:"person",     kws:["name","receiver","contact","收件人","联系人","姓名"] }
+];
+
+function matchKeyType(key){
+  const k = key.toLowerCase();
+  for (const r of KEY_RULES) if (r.skip && r.kws.some(w => k.includes(w))) return null;
+  for (const r of KEY_RULES) if (r.type && r.kws.some(w => k.includes(w))) return r.type;
+  return null;
+}
+
+function maskFor(type){
+  const d = DETECTORS.find(x => x.id === type);
+  return d ? d.mask : (EXTRA_TYPES[type] ? EXTRA_TYPES[type].mask : null);
+}
+
+function keyTypeEnabled(type){
+  if (type === "person") return enabled.has("cn_name");
+  if (type === "addr") return enabled.has("cn_addr");
+  if (type === "postcode") return true;
+  return enabled.has(type);
+}
+
+// Matches  "key": "value"  pairs and redacts by key name. Quoted form only — keeps it predictable.
+function collectKeyed(text){
+  const out = [];
+  const re = /"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  let m;
+  while ((m = re.exec(text)) !== null){
+    const key = m[1], val = m[2];
+    if (!val.trim() || val.length > 300) continue;
+    const type = matchKeyType(key);
+    if (!type || !keyTypeEnabled(type)) continue;
+    const off = m[0].lastIndexOf('"' + val + '"');
+    if (off < 0) continue;
+    const start = m.index + off + 1;
+    out.push({ start, end: start + val.length, text: val, type, label: type, mask: maskFor(type), weak:false });
+  }
+  return out;
+}
+
+const enabled = new Set(["email","phone_cn","phone_intl","id_cn","card","ipv4","api_key","jwt","cn_name","cn_name_honor","cn_addr","identifier","secret_kv"]);
+
+/* ============================ license ============================ */
+// Offline key: RL-XXXX-XXXX-XXXX  where the 3rd block is derived from blocks 1+2 + SECRET.
+const LICENSE_SECRET = "REDACTLOCAL-2025-a7f3";
+function fnv1a(str){
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+function keyValid(key){
+  const m = /^RL-([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{4})$/.exec((key||"").trim().toUpperCase());
+  if (!m) return false;
+  const expect = fnv1a(m[1] + m[2] + LICENSE_SECRET).toString(36).toUpperCase().padStart(7,"0").slice(0,4);
+  const expect2 = fnv1a(m[2] + m[1] + LICENSE_SECRET).toString(36).toUpperCase().padStart(7,"0").slice(0,4);
+  return m[3] === expect || m[3] === expect2;
+}
+let isPro = false;
+function loadLicense(){
+  if (FULLY_FREE){ isPro = true; paintPlan(); return; }
+  const k = localStorage.getItem("rl_lic");
+  if (k && keyValid(k)) { isPro = true; }
+  paintPlan();
+}
+function paintPlan(){
+  if (FULLY_FREE){
+    // 开源版：不显示套餐标识，也不显示解锁入口
+    const pb = document.getElementById("planBadge"); if (pb) pb.style.display = "none";
+    const bu = document.getElementById("btnUnlock"); if (bu) bu.style.display = "none";
+    const lb = document.getElementById("licBox"); if (lb) lb.classList.remove("show");
+    return;
+  }
+  planBadge.textContent = isPro ? T("pro") : T("free");
+  planBadge.className = isPro ? "pill pro" : "badge";
+}
+
+/* ============================ core engine ============================ */
+const FREE_LIMIT = 5000;
+
+function collect(text, customRules){
+  const hits = [];
+  const strictCard = !!(document.getElementById("cardStrict") && document.getElementById("cardStrict").checked);
+  const rules = DETECTORS.filter(d => enabled.has(d.id));
+  for (const d of rules){
+    d.re.lastIndex = 0;
+    let m;
+    while ((m = d.re.exec(text)) !== null){
+      if (m[0] === "") { d.re.lastIndex++; continue; }
+      if (d.validate && !d.validate(m[0])) continue;
+      // soft checks never drop a candidate: a failed Luhn only lowers confidence.
+      // Missing real data is far worse than an extra asterisk.
+      const weak = !!(d.soft && !d.soft(m[0]));
+      if (weak && d.id === "card" && strictCard) continue;
+      if (weak && d.id === "card" && !looksLikeCard(m[0])) continue;
+      hits.push({ start:m.index, end:m.index + m[0].length, text:m[0], type:d.id, label:d.en, mask:d.mask, weak });
+    }
+  }
+  // key-aware pass: catches "address": "…" style payloads that shape rules alone cannot see
+  for (const h of collectKeyed(text)) hits.push(h);
+  for (const c of customRules){
+    const re = new RegExp(c.source, c.flags.includes("g") ? c.flags : c.flags + "g");
+    let m;
+    while ((m = re.exec(text)) !== null){
+      if (m[0] === "") { re.lastIndex++; continue; }
+      hits.push({ start:m.index, end:m.index + m[0].length, text:m[0], type:"custom", label:c.label, mask:null });
+    }
+  }
+  // resolve overlaps: earlier start wins, longer wins on ties
+  hits.sort((a,b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+  const out = [];
+  let lastEnd = -1;
+  for (const h of hits){
+    if (h.start >= lastEnd){ out.push(h); lastEnd = h.end; }
+  }
+  return out;
+}
+
+// A ctx keeps placeholder numbering consistent across many cells / files.
+function newCtx(){ return { counters:{}, mapping:new Map(), rows:[] }; }
+
+function redact(text, opts = {}){
+  const mode = (document.getElementById("mode") && document.getElementById("mode").value) || "placeholder";
+  const customRules = opts.customRules || currentCustomRules();
+  const hits = collect(text, customRules);
+  const ctx = opts.ctx || newCtx();
+  const { counters, mapping, rows } = ctx;
+  let result = "";
+  let cursor = 0;
+
+  hits.forEach(h => {
+    result += text.slice(cursor, h.start);
+    let rep;
+    const key = h.type + "::" + h.text;
+    if (mode === "placeholder"){
+      if (!mapping.has(key)){
+        counters[h.type] = (counters[h.type] || 0) + 1;
+        const ph = "[" + h.type.toUpperCase() + "_" + counters[h.type] + "]";
+        mapping.set(key, ph);
+        rows.push({ placeholder:ph, type:h.type, original:h.text });
+      }
+      rep = mapping.get(key);
+    } else if (mode === "hash"){
+      if (!mapping.has(key)){
+        const ph = h.type.toUpperCase() + "_" + fnv1a(h.text).toString(16).padStart(8,"0");
+        mapping.set(key, ph);
+        rows.push({ placeholder:ph, type:h.type, original:h.text });
+      }
+      rep = mapping.get(key);
+    } else if (mode === "mask"){
+      rep = h.mask ? h.mask(h.text) : kept(h.text, 1, 1);
+      if (!mapping.has(key)){ mapping.set(key, rep); rows.push({ placeholder:rep, type:h.type, original:h.text }); }
+    } else {
+      rep = "";
+      rows.push({ placeholder:"(removed)", type:h.type, original:h.text });
+    }
+    result += rep;
+    cursor = h.end;
+  });
+  result += text.slice(cursor);
+  const weakCount = hits.filter(h => h.weak).length;
+  return { text: result, rows, count: hits.length, weak: weakCount, ctx };
+}
+
+let customRules = [];
+function currentCustomRules(){ return isPro ? customRules : []; }
+
+/* ============================ text UI ============================ */
+const $ = id => document.getElementById(id);
+const src = $("src"), out = $("out"), mapBody = $("mapBody");
+
+const SAMPLE = {
+  en: `Hi, this is Jane from Acme (jane.doe@acme-corp.com, +1 415 555 0132).
+Customer 张伟 (ID 110105199003071234, card 4111 1111 1111 1111) opened ticket #8842.
+Her address: 地址：北京市朝阳区建国路88号SOHO现代城A座1801
+Server 10.24.7.91 returned 500. Auth header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.abc123XYZsecret
+password: Hunter2!q
+GitHub token ghp_1234567890abcdefghijklmnopqrstuvwx
+---
+把这段给 ChatGPT 分析一下：客户李娜，手机 13812345678，邮箱 lina@example.cn，投诉订单 A1002。`,
+  zh: `你好，我是 Acme 的 Jane（jane.doe@acme-corp.com，+1 415 555 0132）。
+客户张伟（身份证 110105199003071234，卡号 4111 1111 1111 1111）提交了工单 #8842。
+地址：北京市朝阳区建国路88号SOHO现代城A座1801
+服务器 10.24.7.91 返回 500。鉴权头：Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.abc123XYZsecret
+password: Hunter2!q
+GitHub token ghp_1234567890abcdefghijklmnopqrstuvwx
+---
+把这段给 ChatGPT 分析一下：客户李娜，手机 13812345678，邮箱 lina@example.cn，投诉订单 A1002。`
+};
+
+let lastRows = [];
+function run(){
+  const text = src.value;
+  $("stChars").textContent = text.length;
+
+  if (!isPro && text.length > FREE_LIMIT){
+    $("limitMsg").classList.remove("hidden");
+    $("limitMsg").textContent = T("upsell") + "  ·  " + FREE_LIMIT + " / " + text.length;
+    $("limitMsg").style.cursor = "pointer";
+    $("limitMsg").title = "Unlock Pro";
+    $("limitMsg").onclick = () => { $("licBox").classList.add("show"); $("licBox").scrollIntoView({ behavior:"smooth" }); };
+    const cut = text.slice(0, FREE_LIMIT);
+    const r = redact(cut);
+    out.value = r.text;
+    renderRows(r.rows); lastRows = r.rows;
+    $("stFound").textContent = r.count;
+    $("stRepl").textContent = r.count;
+    setWeak(r.weak);
+    paintCounts(r.rows);
+    return;
+  }
+  $("limitMsg").classList.add("hidden");
+
+  if (!text.trim()){ out.value = ""; renderRows([]); lastRows = []; $("stFound").textContent = "0"; $("stRepl").textContent = "0"; paintCounts([]); setWeak(0); return; }
+  const r = redact(text);
+  out.value = r.text;
+  lastRows = r.rows;
+  renderRows(r.rows);
+  $("stFound").textContent = r.count;
+  $("stRepl").textContent = r.count;
+  setWeak(r.weak);
+  paintCounts(r.rows);
+}
+
+function setWeak(n){
+  const el = document.getElementById("cardWarn");
+  if (!el) return;
+  if (n > 0){
+    el.classList.remove("hidden");
+    el.textContent = n + " × " + T("weakWarn");
+  } else {
+    el.classList.add("hidden");
+    el.textContent = "";
+  }
+}
+
+function paintCounts(rows){
+  const c = {};
+  // key-based hits reuse the closest sidebar switch so the counters stay honest
+  const merge = { person:"cn_name", addr:"cn_addr" };
+  rows.forEach(r => { const k = merge[r.type] || r.type; c[k] = (c[k] || 0) + 1; });
+  document.querySelectorAll("#detList .det").forEach(el => {
+    const n = c[el.dataset.id] || 0;
+    const span = el.querySelector(".cnt");
+    span.textContent = n ? n : "";
+    span.classList.toggle("hit", n > 0);
+  });
+}
+
+function typeLabel(t){
+  const d = DETECTORS.find(x => x.id === t);
+  if (d) return LANG === "zh" ? d.zh : d.en;
+  if (EXTRA_TYPES[t]) return LANG === "zh" ? EXTRA_TYPES[t].zh : EXTRA_TYPES[t].en;
+  if (t === "custom") return LANG === "zh" ? "自定义规则" : "custom rule";
+  return t;
+}
+
+function renderRows(rows){
+  if (!rows.length){
+    mapBody.innerHTML = '<tr><td colspan="3" style="color:#8b98a8">' + T("noHits") + "</td></tr>";
+    return;
+  }
+  mapBody.innerHTML = rows.map(r =>
+    "<tr><td>" + esc(r.placeholder) + "</td><td>" + esc(typeLabel(r.type)) + "</td><td>" + esc(r.original) + "</td></tr>"
+  ).join("");
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function buildDetectors(){
+  $("detList").innerHTML = DETECTORS.map(d => `
+    <label class="det" data-id="${d.id}">
+      <input type="checkbox" ${enabled.has(d.id) ? "checked" : ""} />
+      <span class="nm">${LANG === "zh" ? d.zh : d.en}</span>
+      <span class="cnt"></span>
+    </label>`).join("");
+  document.querySelectorAll("#detList .det").forEach(el => {
+    el.querySelector("input").addEventListener("change", e => {
+      e.target.checked ? enabled.add(el.dataset.id) : enabled.delete(el.dataset.id);
+      run();
+    });
+  });
+}
+
+/* ============================ downloads ============================ */
+function download(name, content, mime = "text/plain;charset=utf-8"){
+  const blob = new Blob([content], { type:mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function toCsv(rows){
+  const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+  return "placeholder,type,original\n" + rows.map(r => [r.placeholder, r.type, r.original].map(q).join(",")).join("\n");
+}
+
+/* ============================ csv parse ============================ */
+function parseCsv(text){
+  const rows = []; let row = [], cell = "", i = 0, q = false;
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  while (i < text.length){
+    const ch = text[i];
+    if (q){
+      if (ch === '"'){
+        if (text[i+1] === '"'){ cell += '"'; i += 2; continue; }
+        q = false; i++; continue;
+      }
+      cell += ch; i++; continue;
+    }
+    if (ch === '"'){ q = true; i++; continue; }
+    if (ch === ","){ row.push(cell); cell = ""; i++; continue; }
+    if (ch === "\r"){ i++; continue; }
+    if (ch === "\n"){ row.push(cell); rows.push(row); row = []; cell = ""; i++; continue; }
+    cell += ch; i++;
+  }
+  if (cell !== "" || row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+function toCsvRows(rows){
+  return rows.map(r => r.map(c => {
+    const s = String(c);
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(",")).join("\n");
+}
+
+/* ============================ file UI ============================ */
+let fileJobs = [];
+async function handleFiles(list){
+  if (!isPro){ fileMsg.textContent = T("proOnly"); showLicense(); $("licBox").classList.add("show"); $("licBox").scrollIntoView({behavior:"smooth"}); return; }
+  for (const f of list){
+    const raw = await f.text();
+    let rows, hits = 0, outText;
+    const ctx = newCtx();
+    const isCsv = /\.(csv|tsv)$/i.test(f.name);
+    if (isCsv){
+      rows = parseCsv(raw);
+      const red = rows.map(r => r.map(c => { const x = redact(c, { ctx }); hits += x.count; return x.text; }));
+      outText = toCsvRows(red);
+    } else {
+      const x = redact(raw, { ctx });
+      hits = x.count; outText = x.text;
+      rows = raw.split("\n").map(l => [l]);
+    }
+    fileJobs.push({ name:f.name, rows:rows.length, hits, outText, map:ctx.rows });
+  }
+  paintFiles();
+}
+function paintFiles(){
+  $("fileBody").innerHTML = fileJobs.map((j, i) => `
+    <tr><td>${esc(j.name)}</td><td>${j.rows}</td><td>${j.hits}</td>
+    <td style="text-align:right"><button class="small ghost" data-dl="${i}">↓</button></td></tr>`).join("")
+    || '<tr><td colspan="4" style="color:#8b98a8">—</td></tr>';
+  document.querySelectorAll("[data-dl]").forEach(b => b.onclick = () => {
+    const j = fileJobs[+b.dataset.dl];
+    const name = j.name.replace(/(\.[^.]+)?$/, m => ".redacted" + (m || ".txt"));
+    download(name, j.outText, "text/plain;charset=utf-8");
+  });
+}
+
+/* ============================ restore ============================ */
+function restore(){
+  let text = $("rSrc").value;
+  const csv = $("rMap").value.trim();
+  if (!text || !csv) return;
+  const rows = parseCsv(csv);
+  const pairs = [];
+  for (const r of rows){
+    if (!r || r.length < 3) continue;
+    if (r[0].toLowerCase() === "placeholder") continue;
+    pairs.push([r[0], r[2]]);
+  }
+  pairs.sort((a,b) => b[0].length - a[0].length);
+  for (const [ph, orig] of pairs){
+    text = text.split(ph).join(orig);
+  }
+  $("rOut").value = text;
+}
+
+/* ============================ wiring ============================ */
+function applyLang(){
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-opt]").forEach(el => { el.textContent = T(el.dataset.i18nOpt); });
+  document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
+  $("src").placeholder = LANG === "zh" ? "把客服工单、邮件、表格某一列或接口日志粘进来…" : "Paste a support ticket, email thread, spreadsheet column or API log here…";
+  $("out").placeholder = LANG === "zh" ? "脱敏后的文本会出现在这里。" : "Redacted text appears here.";
+  $("rOut").placeholder = LANG === "zh" ? "还原后的文本…" : "Restored text…";
+  buildDetectors();
+  paintPlan();
+  paintCounts(lastRows);
+  const bl = $("buyLink");
+  bl.href = BUY_URL;
+  bl.textContent = T("buy") + " " + PRICE;
+  const lm = $("limitMsg");
+  lm.style.cssText = "cursor:pointer;color:var(--warn);border-color:#5a4320;background:#1d1608;white-space:normal;text-align:left;line-height:1.4";
+}
+
+function showLicense(){ $("licBox").classList.add("show"); }
+
+$("btnUnlock").onclick = () => { $("licBox").classList.toggle("show"); };
+$("btnActivate").onclick = () => {
+  const k = $("licKey").value;
+  if (keyValid(k)){ localStorage.setItem("rl_lic", k.trim().toUpperCase()); isPro = true; paintPlan(); $("licMsg").textContent = T("activated"); run(); }
+  else { $("licMsg").textContent = T("badKey"); }
+};
+$("mode").onchange = run;
+$("cardStrict").onchange = run;
+$("src").addEventListener("input", run);
+$("btnSample").onclick = () => { src.value = SAMPLE[LANG] || SAMPLE.en; run(); };
+$("btnClear").onclick = () => { src.value = ""; run(); };
+$("btnCopy").onclick = async () => { try { await navigator.clipboard.writeText(out.value); $("btnCopy").textContent = T("copied"); setTimeout(()=>$("btnCopy").textContent=T("copy"),1200);} catch(e){} };
+$("btnDl").onclick = () => download("redacted.txt", out.value);
+$("btnDlMap").onclick = () => download("mapping.csv", toCsv(lastRows), "text/csv;charset=utf-8");
+
+$("btnApplyCustom").onclick = () => {
+  if (!isPro){ $("licBox").classList.add("show"); $("licMsg").textContent = T("proOnly"); return; }
+  const v = $("customRe").value.trim();
+  if (!v) return;
+  try { new RegExp(v); } catch(e){ $("licMsg").textContent = "Bad regex: " + e.message; return; }
+  customRules.push({ source:v, flags:"g", label:"custom" });
+  $("customRe").value = "";
+  run();
+};
+
+// tabs
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".pane").forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  $("pane-" + t.dataset.tab).classList.add("active");
+});
+
+// files
+const drop = $("drop");
+drop.onclick = () => { if (!isPro){ showLicense(); $("licMsg").textContent = T("proOnly"); return; } $("fileInput").click(); };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); handleFiles(e.dataTransfer.files); };
+$("fileInput").onchange = e => handleFiles(e.target.files);
+$("btnDlAll").onclick = () => fileJobs.forEach(j => download(j.name.replace(/(\.[^.]+)?$/, m => ".redacted" + (m||".txt")), j.outText));
+$("btnDlAllMap").onclick = () => {
+  const all = [].concat.apply([], fileJobs.map(j => j.map));
+  if (all.length) download("mapping-all.csv", toCsv(all), "text/csv;charset=utf-8");
+};
+
+// restore
+$("btnRestore").onclick = restore;
+
+// lang
+$("lang").value = LANG;
+$("lang").onchange = e => { LANG = e.target.value; localStorage.setItem("rl_lang", LANG); applyLang(); run(); };
+
+// no-network guard: report if any fetch/XHR is attempted
+window.addEventListener("securitypolicyviolation", () => {});
+loadLicense();
+applyLang();
+run();
+</script>
+</body>
+</html>

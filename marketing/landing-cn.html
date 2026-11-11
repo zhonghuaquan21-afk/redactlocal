@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RedactLocal — 把客户信息抹掉再交给 AI｜本地脱敏工具</title>
+<meta name="description" content="手机号、身份证、银行卡、中文姓名地址，一键抹成占位符再发给 ChatGPT。全程本地运行、不上传、断网可用，处理完还能一键还原。免费版直接可用。" />
+<meta property="og:title" content="RedactLocal — 把客户信息抹掉再交给 AI" />
+<meta property="og:description" content="本地脱敏工具：不上传、断网可用、可还原。手机号/身份证/银行卡/姓名地址一键抹除。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0f14'/%3E%3Ccircle cx='16' cy='16' r='8' fill='%233ddc97'/%3E%3C/svg%3E" />
+<style>
+  :root{--bg:#070a0e;--panel:#0e141c;--line:#1c2733;--text:#e8eef5;--muted:#8b98a8;--accent:#3ddc97;--accent2:#4da3ff;--warn:#ffb454}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 520px at 50% -160px,#122a24 0%,var(--bg) 62%) no-repeat,var(--bg);
+    color:var(--text);font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px}
+  header{display:flex;align-items:center;gap:12px;padding:20px 0}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:750;font-size:17px}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 16px var(--accent)}
+  header nav{margin-left:auto;display:flex;gap:20px;align-items:center;font-size:14px}
+  header a{color:var(--muted);text-decoration:none}header a:hover{color:var(--text)}
+  .btn{display:inline-block;padding:13px 24px;border-radius:11px;font-weight:650;text-decoration:none;font-size:15px;transition:.16s;border:1px solid transparent}
+  .btn.primary{background:var(--accent);color:#04231a;box-shadow:0 8px 26px rgba(61,220,151,.22)}
+  .btn.primary:hover{transform:translateY(-1px)}
+  .btn.ghost{border-color:#26333f;color:var(--text);background:#0d131a}
+  .btn.sm{padding:9px 16px;font-size:13.5px;border-radius:9px}
+  .hero{padding:50px 0 20px;text-align:center}
+  .kicker{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--accent);border:1px solid #1d4d38;background:#0b1f18;padding:5px 13px;border-radius:999px;margin-bottom:22px}
+  h1{font-size:clamp(30px,5vw,52px);line-height:1.16;margin:0 0 18px;letter-spacing:-.02em;font-weight:800}
+  h1 .hl{color:var(--accent)}
+  .sub{font-size:clamp(15px,2.1vw,18px);color:#b3c0ce;max-width:640px;margin:0 auto 30px;line-height:1.75}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .tiny{font-size:12.5px;color:var(--muted);margin-top:14px}
+  .shot{margin:42px 0 0;border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+  .shot img{display:block;width:100%}
+  section{padding:66px 0}
+  .sec-head{text-align:center;margin-bottom:40px}
+  h2{font-size:clamp(23px,3.3vw,32px);margin:0 0 12px;letter-spacing:-.015em}
+  .sec-head p{color:var(--muted);margin:0;font-size:15.5px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:22px}
+  .card h3{margin:0 0 8px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:14.6px;line-height:1.7}
+  .ico{font-size:20px;margin-bottom:10px;display:block}
+  table.cmp{width:100%;border-collapse:collapse;font-size:14.6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table.cmp th,table.cmp td{padding:13px 16px;border-bottom:1px solid var(--line);text-align:left}
+  table.cmp th{color:var(--muted);font-size:13px;font-weight:600}
+  table.cmp tr:last-child td{border-bottom:none}
+  table.cmp td.hi{color:var(--accent);font-weight:600}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;counter-reset:s}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:20px;position:relative}
+  .step:before{counter-increment:s;content:counter(s);position:absolute;top:-13px;left:18px;width:27px;height:27px;border-radius:8px;
+    background:var(--accent);color:#04231a;display:grid;place-items:center;font-weight:800;font-size:13.5px}
+  .step b{display:block;margin:6px 0;font-size:15px}
+  .step span{color:var(--muted);font-size:14px;line-height:1.65}
+  .price{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:18px;align-items:start}
+  .tier{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:26px}
+  .tier.best{border-color:#2c5c47;box-shadow:0 0 0 1px #2c5c47,0 18px 50px rgba(0,0,0,.45);position:relative}
+  .tier.best:after{content:"买这个";position:absolute;top:-12px;right:20px;background:var(--accent);color:#04231a;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px}
+  .tier h3{margin:0 0 4px;font-size:16px;color:var(--muted);font-weight:600}
+  .amt{font-size:36px;font-weight:800;letter-spacing:-.02em;margin:6px 0 2px}
+  .amt small{font-size:14px;font-weight:500;color:var(--muted)}
+  ul.feat{list-style:none;padding:0;margin:18px 0 22px;font-size:14.4px;color:#c3cedb}
+  ul.feat li{padding:5px 0 5px 25px;position:relative}
+  ul.feat li:before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:700}
+  ul.feat li.no{color:#67737f}ul.feat li.no:before{content:"–";color:#3b4652}
+  .buy{display:grid;grid-template-columns:1fr 260px;gap:28px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:30px}
+  @media (max-width:760px){.buy{grid-template-columns:1fr}}
+  .buy ol{margin:0;padding-left:20px;color:#c3cedb;font-size:15px;line-height:2}
+  .buy ol b{color:var(--text)}
+  .qr{border:2px dashed #2a3a4c;border-radius:14px;background:#0b1118;height:220px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);font-size:13px;overflow:hidden}
+  .qr img{width:100%;height:100%;object-fit:contain}
+  .qr-ph{padding:16px;line-height:1.7}
+  .qr code{background:#06100d;border:1px solid #1b3b2f;padding:2px 6px;border-radius:5px;font-size:12px}
+  .faq{max-width:740px;margin:0 auto}
+  details{border-bottom:1px solid var(--line);padding:16px 0}
+  summary{cursor:pointer;font-weight:600;font-size:15.5px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary:before{content:"+ ";color:var(--accent);font-weight:700}
+  details[open] summary:before{content:"– "}
+  details p{color:var(--muted);margin:10px 0 0;font-size:14.6px;line-height:1.75}
+  .final{text-align:center;padding:74px 0 84px}
+  footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--muted);font-size:13px}
+  footer .row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+  footer a{color:var(--muted);text-decoration:none}
+  .badge{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid #1d4d38;background:#0b1f18;color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo"><span class="dot"></span>RedactLocal</div>
+    <nav>
+      <a href="#how">怎么用</a>
+      <a href="#pricing">价格</a>
+      <a href="#faq">常见问题</a>
+      <a class="btn ghost sm" href="../cn/index.html">打开工具</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="kicker">🔒 全程本地运行 · 不上传</div>
+    <h1>别再把客户信息<br><span class="hl">直接粘进 ChatGPT</span></h1>
+    <p class="sub">
+      手机号、身份证、银行卡、邮箱、中文姓名和地址，一键抹成占位符再交给 AI。<br>
+      数据不出你的电脑，断网也能用，处理完还能一键还原真名真号。
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="../cn/index.html">免费使用 · 不用注册</a>
+      <a class="btn ghost" href="#pricing">看看专业版</a>
+    </div>
+    <div class="tiny">Windows / macOS 都能用 · 单文件 13 KB · 不装软件</div>
+
+    <div class="shot">
+      <img src="../cn/assets/app-zh.png" alt="RedactLocal 界面：手机号、身份证、银行卡被替换成占位符" />
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>三种做法，你只能选一个</h2>
+      <p>大多数团队卡在中间：想用 AI，但数据不能出门。</p>
+    </div>
+    <table class="cmp">
+      <tr><th>做法</th><th>成本</th><th>问题</th></tr>
+      <tr><td>干脆不用 AI</td><td>零</td><td>效率落后，客户等回复</td></tr>
+      <tr><td>企业级数据防泄漏系统</td><td>几万起</td><td>采购半年，同事嫌麻烦不用</td></tr>
+      <tr><td class="hi">本地脱敏后再发给 AI</td><td>¥0 起</td><td class="hi">今天就能用上，数据不出本机</td></tr>
+    </table>
+  </section>
+
+  <section id="how">
+    <div class="sec-head"><h2>三步，五秒钟</h2><p>不用装软件，不用配 API，不用走审批。</p></div>
+    <div class="steps">
+      <div class="step"><b>粘贴</b><span>客服工单、邮件、表格某一列、接口日志，直接粘进去。</span></div>
+      <div class="step"><b>勾选要抹掉什么</b><span>13 类信息可按需开关，也能加自己的规则。</span></div>
+      <div class="step"><b>复制，发给 AI</b><span>映射表留在本机，AI 的回答再一键还原。</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>为什么它比"随便打码"好用</h2><p>打码是给人看的，脱敏是给机器用的。</p></div>
+    <div class="grid">
+      <div class="card"><span class="ico">↩️</span><h3>可还原</h3><p>占位符 <code>[EMAIL_1]</code> 配映射表，AI 写好的回复能换回真名真号，工作流不中断。</p></div>
+      <div class="card"><span class="ico">🖥️</span><h3>真的不上传</h3><p>打开浏览器开发者工具的「网络」面板，边脱敏边看：零请求。整页就一个文件，没有后端可泄露。</p></div>
+      <div class="card"><span class="ico">📄</span><h3>整张表格处理</h3><p>从 CRM、客服系统导出的 CSV，逐单元格扫描，结构和引号原样保留，直接下载。</p></div>
+      <div class="card"><span class="ico">🇨🇳</span><h3>中文优先</h3><p>身份证带日期结构校验，手机号按号段识别；银行卡按形态识别，Luhn 只作参考——校验不过也照样遮蔽。</p></div>
+      <div class="card"><span class="ico">🎛️</span><h3>你自己的规则</h3><p>员工编号、工单前缀、内部编码，加一条正则就行，本地即时生效。</p></div>
+      <div class="card"><span class="ico">💸</span><h3>一次买断</h3><p>不订阅、不按次收费、不锁功能。文件放你电脑上，断网十年也能用。</p></div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="sec-head"><h2>价格</h2><p>免费版是真能用的，不是试用装。</p></div>
+    <div class="price">
+      <div class="tier">
+        <h3>免费版</h3>
+        <div class="amt">¥0</div>
+        <ul class="feat">
+          <li>单次 5000 字符文本脱敏</li>
+          <li>13 类信息全部可识别</li>
+          <li>映射表预览</li>
+          <li class="no">批量文件</li>
+          <li class="no">自定义规则</li>
+          <li class="no">还原面板</li>
+        </ul>
+        <a class="btn ghost" href="../cn/index.html" style="display:block;text-align:center">直接开始</a>
+      </div>
+      <div class="tier best">
+        <h3>专业版 · 一次买断</h3>
+        <div class="amt">¥129 <small>永久使用</small></div>
+        <ul class="feat">
+          <li>文本不限长度</li>
+          <li>批量 CSV / TXT 文件</li>
+          <li>自定义正则规则</li>
+          <li>还原面板 + 映射表导出</li>
+          <li>离线单文件，不装软件</li>
+          <li>后续 1.x 版本免费更新</li>
+        </ul>
+        <a class="btn primary" href="#buy" style="display:block;text-align:center">微信购买 ¥129</a>
+        <div class="tiny" style="text-align:center">付款后 30 分钟内发码 · 7 天不满意直接退</div>
+      </div>
+      <div class="tier">
+        <h3>团队版 · 5 台</h3>
+        <div class="amt">¥499</div>
+        <ul class="feat">
+          <li>专业版全部功能 × 5 台</li>
+          <li>可装在内网 / 断网机器</li>
+          <li>公司内部商用授权</li>
+          <li>可开电子普通发票</li>
+          <li>优先微信答疑</li>
+        </ul>
+        <a class="btn ghost" href="#buy" style="display:block;text-align:center">联系购买</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="buy">
+    <div class="sec-head"><h2>怎么买</h2><p>没有商城后台，人工发货，反而更快。</p></div>
+    <div class="buy">
+      <div>
+        <ol>
+          <li>扫码付款 <b>¥129</b>（团队版 ¥499），或点 <a href="#" data-checkout style="color:var(--accent2)">这里在线购买</a></li>
+          <li>付款备注里写上<b>你的微信号</b>或邮箱</li>
+          <li><b>30 分钟内</b>收到安装包 + 授权码（正常 10 分钟内）</li>
+          <li>打开文件、粘贴授权码，永久生效，无需联网</li>
+        </ol>
+        <p class="tiny" style="margin-top:12px">购买即同意：一份授权限一人使用，团队版限 5 台，不得转售。7 天内不满意全额退款。</p>
+      </div>
+      <div class="qr">
+        <img src="assets/wechat-qr.png" alt="微信收款码" onerror="this.remove();document.getElementById('qrph').style.display='block'">
+        <div class="qr-ph" id="qrph" style="display:none">
+          <b>（卖家替换这个图）</b><br>
+          把你的收款码截图存成<br><code>cn/assets/wechat-qr.png</code><br>
+          页面会自动显示
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="sec-head"><h2>常见问题</h2></div>
+    <div class="faq">
+      <details open>
+        <summary>怎么证明它真的不上传？</summary>
+        <p>打开页面 → 按 F12 → 切到「网络」→ 清空 → 开始脱敏。整个过程中不会出现任何请求。更直接的办法：断网再试，行为完全一样。整页就是一个 HTML 文件，<code>Ctrl+U</code> 能看到全部源码，搜 <code>fetch(</code> 也不会有联网代码。</p>
+      </details>
+      <details>
+        <summary>能识别哪些信息？会不会漏？</summary>
+        <p>结构性数据基本都能识别：邮箱、手机号（含 +86）、身份证 18 位、银行卡、IP、API Key、JWT、<code>password=</code> 这类键值对。中文姓名和地址除了靠上下文关键词（姓名：／客户／地址：），<b>JSON 里还会按 key 识别</b>（address / receiver / postcode / pay_password_hint 等），不需要中文前缀。<b>纯散文里没有上下文的姓名会漏</b>，这是正则方案的天然上限，需要的话用自定义规则或人工复核。</p>
+      </details>
+      <details>
+        <summary>抹掉之后 AI 还能用吗？</summary>
+        <p>能，而且效果不打折。模型看 <code>[EMAIL_1]</code> 和看真邮箱写出来的回复质量几乎没区别——它本来也不需要知道真名。拿到回复后用「还原」面板换回真值即可。</p>
+      </details>
+      <details>
+        <summary>用了这个就合规了吗？</summary>
+        <p>不能这么理解。它是一项<b>数据最小化</b>措施，能减少你交给第三方 AI 的信息量；但合法性基础、告知同意、留存期限、委托处理协议是另外的问题，需要法务／DPO 判断。本工具不构成法律意见。</p>
+      </details>
+      <details>
+        <summary>授权码能换电脑吗？</summary>
+        <p>可以。授权码离线校验，不在线绑定设备，换电脑重新粘贴一次即可。请勿公开分享，泄露后会被他人使用。</p>
+      </details>
+      <details>
+        <summary>能开发票吗？</summary>
+        <p>团队版可开电子普通发票，付款时备注开票信息。个人版暂不提供发票。</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="final">
+    <h2>把问题发出去，别把客户发出去。</h2>
+    <p class="sub" style="margin-bottom:26px">在浏览器里脱敏，粘给任何 AI，之后再还原。</p>
+    <div class="cta">
+      <a class="btn primary" href="../cn/index.html">免费打开 RedactLocal</a>
+      <a class="btn ghost" href="#buy">微信购买 ¥129</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="row">
+      <span>© <span id="yr"></span> RedactLocal</span>
+      <a href="../cn/index.html">工具</a>
+      <a href="#pricing">价格</a>
+      <a href="#faq">常见问题</a>
+      <span style="margin-left:auto">本工具不构成法律意见，请结合自身合规要求判断。</span>
+    </div>
+  </footer>
+</div>
+<script>
+/* 把 data-checkout 的 href 换成你的爱发电 / 面包多 / 独立站下单页 */
+const CHECKOUT_URL = "https://YOUR-STORE.afdian.net/a/redactlocal";
+document.querySelectorAll("[data-checkout]").forEach(a => { a.href = CHECKOUT_URL; a.target = "_blank"; a.rel = "noopener"; });
+document.getElementById("yr").textContent = new Date().getFullYear();
+</script>
+</body>
+</html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>RedactLocal — 小红书图卡</title>
+<style>
+  :root{
+    --bg:#070a0e; --panel:#0e141c; --line:#1f2b38; --text:#eaf1f8; --muted:#8b98a8;
+    --accent:#3ddc97; --warn:#ffb454; --red:#ff6b6b; --blue:#4da3ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#222;font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",-apple-system,sans-serif}
+  .deck{display:flex;flex-wrap:wrap;gap:20px;padding:20px;justify-content:center}
+
+  .card{
+    width:1080px;height:1440px;flex:0 0 auto;position:relative;overflow:hidden;
+    background:radial-gradient(900px 500px at 50% -120px,#12352b 0%,var(--bg) 58%) no-repeat,var(--bg);
+    color:var(--text);padding:84px 76px;display:flex;flex-direction:column;
+  }
+  .card:after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(700px 300px at 85% 105%,rgba(61,220,151,.10),transparent 70%);
+  }
+  .brand{display:flex;align-items:center;gap:14px;font-size:28px;font-weight:800;letter-spacing:.3px;margin-bottom:42px}
+  .dot{width:22px;height:22px;border-radius:50%;background:var(--accent);box-shadow:0 0 30px var(--accent)}
+  .tag{
+    font-size:24px;color:var(--accent);border:2px solid #235c46;background:#0c211a;
+    padding:9px 24px;border-radius:999px;align-self:flex-start;margin-bottom:30px;font-weight:600;
+  }
+  h1{margin:0;font-size:88px;line-height:1.14;letter-spacing:-2px;font-weight:900}
+  h1 .hl{color:var(--accent)}
+  h1 .strike{color:var(--red);text-decoration:line-through;text-decoration-thickness:10px}
+  .sub{font-size:36px;line-height:1.5;color:#b9c6d4;margin:30px 0 0;font-weight:500}
+  .spacer{flex:1}
+  .foot{display:flex;align-items:center;justify-content:space-between;font-size:26px;color:var(--muted);border-top:2px solid var(--line);padding-top:24px;margin-top:26px}
+  .foot b{color:var(--text);font-size:30px}
+
+  /* before/after blocks */
+  .ba{display:flex;flex-direction:column;gap:28px;margin-top:22px}
+  .block{border:2px solid var(--line);border-radius:26px;background:var(--panel);overflow:hidden}
+  .bhead{display:flex;align-items:center;gap:14px;padding:16px 26px;border-bottom:2px solid var(--line);font-size:26px;font-weight:700}
+  .bhead .flag{width:16px;height:16px;border-radius:50%}
+  .red .flag{background:var(--red)} .green .flag{background:var(--accent)}
+  .bhead.red{color:#ff9b9b} .bhead.green{color:#8ef0c4}
+  pre{
+    margin:0;padding:26px;font-family:"Cascadia Mono",Consolas,"MS Gothic",monospace;
+    font-size:25px;line-height:1.62;white-space:pre-wrap;word-break:break-all;color:#d7e2ee;
+  }
+  .ph{color:var(--accent);font-weight:700}
+  .pii{color:var(--warn);font-weight:700;background:rgba(255,180,84,.12);border-radius:6px;padding:0 6px}
+  .count{display:flex;gap:48px;margin-top:26px;font-size:30px;color:var(--muted)}
+  .count b{display:block;font-size:58px;color:var(--accent);font-weight:900;line-height:1.1}
+  .count .w b{color:var(--warn)}
+
+  /* restore visual */
+  .flow{display:flex;align-items:center;gap:26px;margin-top:10px}
+  .chip{
+    font-family:Consolas,monospace;font-size:34px;padding:22px 30px;border-radius:20px;
+    border:2px solid var(--line);background:var(--panel);white-space:nowrap;
+  }
+  .chip.g{color:var(--accent);border-color:#235c46;background:#0c211a}
+  .chip.o{color:var(--warn);border-color:#5a4320;background:#1d1608}
+  .arrow{font-size:46px;color:var(--muted)}
+
+  /* steps */
+  .steps{display:flex;flex-direction:column;gap:24px;margin-top:20px}
+  .step{display:flex;gap:28px;align-items:flex-start}
+  .num{
+    flex:0 0 auto;width:56px;height:56px;border-radius:16px;background:var(--accent);color:#04231a;
+    display:grid;place-items:center;font-size:30px;font-weight:900;
+  }
+  .step b{display:block;font-size:36px;margin-bottom:6px}
+  .step span{font-size:28px;color:var(--muted);line-height:1.45}
+  .cta{
+    margin-top:auto;background:var(--accent);color:#04231a;border-radius:24px;
+    padding:34px;text-align:center;font-size:42px;font-weight:900;letter-spacing:.5px;
+  }
+  .cta small{display:block;font-size:26px;font-weight:500;margin-top:12px;color:#0a3a2a}
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- ============ CARD 1: hook ============ -->
+  <div class="card" id="c1">
+    <div class="brand"><span class="dot"></span>RedactLocal</div>
+    <div class="tag">🔒 全程本地运行 · 不上传</div>
+    <h1>别再把<br>客户信息<br><span class="hl">粘进 ChatGPT</span></h1>
+    <p class="sub">手机号、身份证、银行卡、邮箱<br>一键抹干净，再交给 AI</p>
+    <div class="spacer"></div>
+    <div class="ba">
+      <div class="block">
+        <div class="bhead red"><span class="flag"></span>你现在发出去的</div>
+        <pre>客户李娜，手机 <span class="pii">13812345678</span>
+身份证 <span class="pii">110105199003071231</span></pre>
+      </div>
+      <div class="block">
+        <div class="bhead green"><span class="flag"></span>应该发出去的</div>
+        <pre>客户<span class="ph">[CN_NAME_1]</span>，手机 <span class="ph">[PHONE_CN_1]</span>
+身份证 <span class="ph">[ID_CN_1]</span></pre>
+      </div>
+    </div>
+    <div class="foot"><b>1 秒完成</b><span>不上传 · 断网可用 · 可还原</span></div>
+  </div>
+
+  <!-- ============ CARD 2: detection ============ -->
+  <div class="card" id="c2">
+    <div class="brand"><span class="dot"></span>RedactLocal</div>
+    <h1 style="font-size:80px">一次粘贴<br><span class="hl">13 处</span>信息全中</h1>
+    <div class="ba" style="margin-top:36px">
+      <div class="block">
+        <div class="bhead red"><span class="flag"></span>原文 — 什么都敢粘</div>
+        <pre>jane.doe@acme-corp.com  <span class="pii">+1 415 555 0132</span>
+身份证 <span class="pii">110105199003071234</span>
+卡号 <span class="pii">4111 1111 1111 1111</span>
+地址：<span class="pii">北京市朝阳区建国路88号A座1801</span>
+服务器 <span class="pii">10.24.7.91</span>  password: <span class="pii">Hunter2!q</span></pre>
+      </div>
+      <div class="block">
+        <div class="bhead green"><span class="flag"></span>脱敏后 — 可以放心发</div>
+        <pre><span class="ph">[EMAIL_1]</span>  <span class="ph">[PHONE_INTL_1]</span>
+身份证 <span class="ph">[ID_CN_1]</span>
+卡号 <span class="ph">[CARD_1]</span>
+地址：<span class="ph">[CN_ADDR_1]</span>
+服务器 <span class="ph">[IPV4_1]</span>  password: <span class="ph">[SECRET_KV_1]</span></pre>
+      </div>
+    </div>
+    <div class="count">
+      <div>识别类型<b>13</b></div>
+      <div class="w">打错也能抹<b>是</b></div>
+      <div>误伤订单号<b>0</b></div>
+    </div>
+    <div class="foot"><b>中英文都认</b><span>身份证 · 手机 · 姓名 · 地址</span></div>
+  </div>
+
+  <!-- ============ CARD 3: reversible ============ -->
+  <div class="card" id="c3">
+    <div class="brand"><span class="dot"></span>RedactLocal</div>
+    <h1 style="font-size:84px">抹掉 <span class="hl">≠</span> 用不了</h1>
+    <p class="sub">占位符可以一键还原<br>AI 的回答照样能填回真名真号</p>
+    <div class="ba" style="margin-top:36px">
+      <div class="block" style="padding:34px">
+        <div style="font-size:30px;color:var(--muted);margin-bottom:26px">① 发给 AI 的（干净）</div>
+        <div class="flow">
+          <div class="chip g">[EMAIL_1]</div>
+          <div class="arrow">→</div>
+          <div style="font-size:30px;color:#b9c6d4">AI 生成道歉信，原样保留占位符</div>
+        </div>
+      </div>
+      <div class="block" style="padding:34px">
+        <div style="font-size:30px;color:var(--muted);margin-bottom:26px">② 你收到的（还原后）</div>
+        <div class="flow">
+          <div class="chip o">jane.doe@acme-corp.com</div>
+        </div>
+      </div>
+      <div class="block" style="padding:34px">
+        <div style="font-size:30px;color:var(--muted);margin-bottom:18px">映射表 — 只存在你自己电脑上</div>
+        <pre style="padding:0">[EMAIL_1]  <span class="ph">→</span>  jane.doe@acme-corp.com
+[CARD_1]   <span class="ph">→</span>  4111 1111 1111 1111</pre>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot"><b>所以工作流不断</b><span>脱敏 → 问 AI → 还原 → 发出</span></div>
+  </div>
+
+  <!-- ============ CARD 4: how to get ============ -->
+  <div class="card" id="c4">
+    <div class="brand"><span class="dot"></span>RedactLocal</div>
+    <h1 style="font-size:80px">双击就能用<br><span class="hl">不装软件</span></h1>
+    <div class="steps" style="margin-top:34px">
+      <div class="step">
+        <div class="num">1</div>
+        <div><b>打开网页，直接粘贴</b><span>文本或整张 CSV 表格，自动逐格扫描</span></div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div><b>选要抹掉什么</b><span>13 类信息可勾选，也能加自己的规则</span></div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div><b>复制结果，发给 AI</b><span>映射表本地留存，随时还原</span></div>
+      </div>
+    </div>
+    <div class="block" style="margin-top:46px;padding:34px">
+      <div style="display:flex;gap:60px;font-size:32px;color:var(--muted)">
+        <div>单文件大小<b style="display:block;font-size:48px;color:var(--text)">13 KB</b></div>
+        <div>联网请求<b style="display:block;font-size:48px;color:var(--accent)">0 次</b></div>
+        <div>断网可用<b style="display:block;font-size:48px;color:var(--text)">是</b></div>
+      </div>
+    </div>
+    <div class="block" style="margin-top:26px;padding:30px 34px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:28px;color:var(--muted)">专业版<b style="display:block;font-size:54px;color:var(--text);line-height:1.25">¥129 <span style="font-size:24px;color:var(--muted);font-weight:500">一次买断</span></b></div>
+      <div style="font-size:26px;color:var(--muted);text-align:right;line-height:1.6">批量文件 · 自定义规则<br>可开发票 · 团队版另议</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="cta">免费版直接可用<small>评论区 / 主页自取 · 无需注册</small></div>
+  </div>
+
+  <!-- ============ CARD 5: checklist ============ -->
+  <div class="card" id="c5">
+    <div class="brand"><span class="dot"></span>RedactLocal</div>
+    <h1 style="font-size:76px">交给 AI 之前<br>这 <span class="hl">6 类</span>必须先抹掉</h1>
+    <div style="margin-top:40px;display:flex;flex-direction:column;gap:22px">
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div style="flex:0 0 auto;width:52px;height:52px;border-radius:14px;background:#182430;color:var(--accent);display:grid;place-items:center;font-size:26px;font-weight:900">1</div>
+        <div><b style="font-size:34px">手机号 / 邮箱</b><span style="display:block;font-size:27px;color:var(--muted);line-height:1.5">最容易被导出，也最容易被撞库</span></div>
+      </div>
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div style="flex:0 0 auto;width:52px;height:52px;border-radius:14px;background:#182430;color:var(--accent);display:grid;place-items:center;font-size:26px;font-weight:900">2</div>
+        <div><b style="font-size:34px">身份证号</b><span style="display:block;font-size:27px;color:var(--muted);line-height:1.5">中间 8 位就是出生日期，等于暴露年龄</span></div>
+      </div>
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div style="flex:0 0 auto;width:52px;height:52px;border-radius:14px;background:#182430;color:var(--accent);display:grid;place-items:center;font-size:26px;font-weight:900">3</div>
+        <div><b style="font-size:34px">银行卡号</b><span style="display:block;font-size:27px;color:var(--muted);line-height:1.5">Luhn 只作参考：打错一位也照样遮蔽，不会静默放过</span></div>
+      </div>
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div style="flex:0 0 auto;width:52px;height:52px;border-radius:14px;background:#182430;color:var(--accent);display:grid;place-items:center;font-size:26px;font-weight:900">4</div>
+        <div><b style="font-size:34px">中文姓名 + 地址</b><span style="display:block;font-size:27px;color:var(--muted);line-height:1.5">靠「姓名：/客户/地址：」这类上下文定位</span></div>
+      </div>
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div style="flex:0 0 auto;width:52px;height:52px;border-radius:14px;background:#1d1608;color:var(--warn);display:grid;place-items:center;font-size:26px;font-weight:900">5</div>
+        <div><b style="font-size:34px">API Key / Token / password</b><span style="display:block;font-size:27px;color:var(--muted);line-height:1.5">这不是隐私问题，是安全事故</span></div>
+      </div>
+      <div style="display:flex;gap:24px;align-items:flex-start">
+        <div style="flex:0 0 auto;width:52px;height:52px;border-radius:14px;background:#1d1608;color:var(--warn);display:grid;place-items:center;font-size:26px;font-weight:900">6</div>
+        <div><b style="font-size:34px">内网 IP / 主机名</b><span style="display:block;font-size:27px;color:var(--muted);line-height:1.5">拓扑泄露比手机号严重，但最常被忽略</span></div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="block" style="padding:28px 34px;background:#0c211a;border-color:#235c46">
+      <div style="font-size:30px;color:var(--accent);font-weight:700">顺序不能反：先脱敏 → 再提问 → 后还原</div>
+      <div style="font-size:26px;color:var(--muted);margin-top:6px">先问再改，等于已经泄露了一次</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

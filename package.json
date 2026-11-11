@@ -1,0 +1,31 @@
+{
+  "name": "redactlocal",
+  "version": "1.0.0",
+  "description": "Redact PII in the browser before it reaches an LLM. Single file, no upload, no dependencies.",
+  "license": "MIT",
+  "type": "commonjs",
+  "keywords": [
+    "pii",
+    "privacy",
+    "redaction",
+    "llm",
+    "gdpr",
+    "anonymize",
+    "offline",
+    "browser"
+  ],
+  "scripts": {
+    "test": "node test/run.js all",
+    "test:en": "node test/run.js",
+    "test:cn": "node test/run.js cn",
+    "build:cn": "node build-cn.js",
+    "serve": "node server.js"
+  },
+  "files": [
+    "index.html",
+    "cn/index.html"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

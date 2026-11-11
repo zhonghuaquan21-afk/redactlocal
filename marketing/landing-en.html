@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RedactLocal — Redact PII before you paste it into ChatGPT</title>
+<meta name="description" content="Strip emails, phone numbers, ID numbers, cards and API keys from text and CSV files before sending them to ChatGPT or any AI tool. Runs 100% in your browser — nothing is uploaded." />
+<meta property="og:title" content="RedactLocal — Redact PII before you paste it into ChatGPT" />
+<meta property="og:description" content="100% browser-local PII redaction for AI workflows. No upload, no account, reversible mapping." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0f14'/%3E%3Ccircle cx='16' cy='16' r='8' fill='%233ddc97'/%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#070a0e; --panel:#0e141c; --line:#1c2733; --text:#e8eef5; --muted:#8b98a8;
+    --accent:#3ddc97; --accent2:#4da3ff; --warn:#ffb454;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:radial-gradient(1100px 520px at 50% -160px,#122a24 0%,var(--bg) 62%) no-repeat,var(--bg);
+    color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:0 22px}
+  header{display:flex;align-items:center;gap:12px;padding:20px 0}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:750;font-size:17px;letter-spacing:.2px}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 16px var(--accent)}
+  header nav{margin-left:auto;display:flex;gap:20px;align-items:center;font-size:14px}
+  header a{color:var(--muted);text-decoration:none}
+  header a:hover{color:var(--text)}
+  .btn{
+    display:inline-block;padding:13px 24px;border-radius:11px;font-weight:650;text-decoration:none;font-size:15px;
+    transition:.16s;border:1px solid transparent;
+  }
+  .btn.primary{background:var(--accent);color:#04231a;box-shadow:0 8px 26px rgba(61,220,151,.22)}
+  .btn.primary:hover{transform:translateY(-1px);box-shadow:0 12px 32px rgba(61,220,151,.3)}
+  .btn.ghost{border-color:#26333f;color:var(--text);background:#0d131a}
+  .btn.ghost:hover{border-color:#3a4c5e}
+  .btn.sm{padding:9px 16px;font-size:13.5px;border-radius:9px}
+
+  .hero{padding:54px 0 26px;text-align:center}
+  .kicker{
+    display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--accent);
+    border:1px solid #1d4d38;background:#0b1f18;padding:5px 13px;border-radius:999px;margin-bottom:22px;
+  }
+  h1{font-size:clamp(31px,5.2vw,54px);line-height:1.1;margin:0 0 18px;letter-spacing:-.02em;font-weight:800}
+  h1 .hl{color:var(--accent)}
+  .sub{font-size:clamp(15px,2.1vw,18.5px);color:#b3c0ce;max-width:660px;margin:0 auto 30px}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .tiny{font-size:12.5px;color:var(--muted);margin-top:14px}
+
+  .shot{
+    margin:46px 0 0;border:1px solid var(--line);border-radius:15px;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.6);background:#0b0f14;
+  }
+  .shot img{display:block;width:100%}
+  .cap{font-size:12.5px;color:var(--muted);text-align:center;margin-top:11px}
+
+  section{padding:74px 0}
+  .sec-head{text-align:center;margin-bottom:44px}
+  h2{font-size:clamp(24px,3.4vw,34px);margin:0 0 12px;letter-spacing:-.015em}
+  .sec-head p{color:var(--muted);margin:0;font-size:15.5px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:22px}
+  .card h3{margin:0 0 8px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+  .ico{font-size:20px;margin-bottom:11px;display:block}
+
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;counter-reset:s}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:20px;position:relative}
+  .step:before{
+    counter-increment:s;content:counter(s);position:absolute;top:-13px;left:18px;
+    width:27px;height:27px;border-radius:8px;background:var(--accent);color:#04231a;
+    display:grid;place-items:center;font-weight:800;font-size:13.5px;
+  }
+  .step b{display:block;margin:6px 0 6px;font-size:15px}
+  .step span{color:var(--muted);font-size:14px}
+
+  .price{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:18px;align-items:start}
+  .tier{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:26px}
+  .tier.best{border-color:#2c5c47;box-shadow:0 0 0 1px #2c5c47,0 18px 50px rgba(0,0,0,.45);position:relative}
+  .tier.best:after{
+    content:"Most popular";position:absolute;top:-12px;right:20px;background:var(--accent);color:#04231a;
+    font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.03em;
+  }
+  .tier h3{margin:0 0 4px;font-size:16px;color:var(--muted);font-weight:600}
+  .amt{font-size:38px;font-weight:800;letter-spacing:-.02em;margin:6px 0 2px}
+  .amt small{font-size:14px;font-weight:500;color:var(--muted)}
+  ul.feat{list-style:none;padding:0;margin:18px 0 22px;font-size:14.4px;color:#c3cedb}
+  ul.feat li{padding:5px 0 5px 25px;position:relative}
+  ul.feat li:before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:700}
+  ul.feat li.no{color:#67737f}
+  ul.feat li.no:before{content:"–";color:#3b4652}
+
+  .faq{max-width:750px;margin:0 auto}
+  details{border-bottom:1px solid var(--line);padding:16px 0}
+  summary{cursor:pointer;font-weight:600;font-size:15.5px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary:before{content:"+ ";color:var(--accent);font-weight:700}
+  details[open] summary:before{content:"– "}
+  details p{color:var(--muted);margin:10px 0 0;font-size:14.6px}
+
+  .proof{background:#0a1512;border:1px solid #1d4d38;border-radius:14px;padding:24px;margin-top:8px}
+  .proof code{background:#06100d;border:1px solid #1b3b2f;padding:2px 7px;border-radius:6px;font-size:13px}
+  .final{text-align:center;padding:80px 0 90px}
+  footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--muted);font-size:13px}
+  footer .row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+  footer a{color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo"><span class="dot"></span>RedactLocal</div>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a class="btn ghost sm" href="index.html">Open the app</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="kicker">🔒 Nothing ever leaves your browser</div>
+    <h1>Redact PII <span class="hl">before</span> you paste it into ChatGPT</h1>
+    <p class="sub">
+      Emails, phone numbers, ID numbers, bank cards and API keys — stripped in one click,
+      from plain text or whole CSV files. No upload, no account, no server to trust.
+      Keep the mapping and you can put the real data back into the AI's answer.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="index.html">Use it free — no signup</a>
+      <a class="btn ghost" href="#pricing">See Pro</a>
+    </div>
+    <div class="tiny">Works offline · Windows / macOS / Linux · Bilingual EN / 中文</div>
+
+    <div class="shot">
+      <img src="../shots/app-en.png" alt="RedactLocal screenshot: sample text with emails, ID numbers and cards replaced by placeholders" />
+    </div>
+    <div class="cap">13 sensitive items detected and replaced in one paste, with a reversible mapping table.</div>
+  </section>
+
+  <section id="how">
+    <div class="sec-head">
+      <h2>Three steps, five seconds</h2>
+      <p>No install. No API key. No compliance questionnaire.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><b>Paste</b><span>Drop a customer ticket, an email thread, a CSV export or an API log.</span></div>
+      <div class="step"><b>Redact</b><span>Choose what to strip. Placeholders stay readable and consistent across rows.</span></div>
+      <div class="step"><b>Send</b><span>Give the clean text to any AI tool. Restore the real values afterwards.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Built for the awkward middle</h2>
+      <p>Your team wants AI. Legal said no to uploading customer data. This is the workaround.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <span class="ico">🖥️</span>
+        <h3>Provably local</h3>
+        <p>Open DevTools, watch the Network tab: zero requests while redacting. There is no backend to leak.</p>
+      </div>
+      <div class="card">
+        <span class="ico">↩️</span>
+        <h3>Reversible</h3>
+        <p>Placeholders like <code>[EMAIL_1]</code> map back to originals, so an AI answer can be re-personalised safely.</p>
+      </div>
+      <div class="card">
+        <span class="ico">📄</span>
+        <h3>Batch CSV</h3>
+        <p>Export from your CRM or helpdesk, redact every cell in place, download the same structure you uploaded.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🌏</span>
+        <h3>Chinese + Western PII</h3>
+        <p>身份证号, 手机号, 中文姓名/地址 and bank cards, alongside emails, IPs, JWTs and API tokens.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🎛️</span>
+        <h3>Your own rules</h3>
+        <p>Add a regex for employee IDs, invoice numbers or internal codes — applied locally, instantly.</p>
+      </div>
+      <div class="card">
+        <span class="ico">💸</span>
+        <h3>One payment, no subscription</h3>
+        <p>Buy once, keep the file. It runs offline forever, including on air-gapped machines.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="sec-head">
+      <h2>Pricing</h2>
+      <p>Free tier is genuinely usable. Pro removes the ceilings.</p>
+    </div>
+    <div class="price">
+      <div class="tier">
+        <h3>Free</h3>
+        <div class="amt">$0</div>
+        <ul class="feat">
+          <li>Text redaction up to 5,000 characters</li>
+          <li>All detectors, both languages</li>
+          <li>Mapping table preview</li>
+          <li class="no">Batch files</li>
+          <li class="no">Custom regex rules</li>
+          <li class="no">Restore panel</li>
+        </ul>
+        <a class="btn ghost" href="index.html" style="display:block;text-align:center">Start free</a>
+      </div>
+      <div class="tier best">
+        <h3>Pro — one-time</h3>
+        <div class="amt">$29 <small>once, yours forever</small></div>
+        <ul class="feat">
+          <li>Unlimited text length</li>
+          <li>Unlimited batch CSV / TXT files</li>
+          <li>Custom regex rules</li>
+          <li>Restore panel + mapping export</li>
+          <li>Offline single file — no install, no account</li>
+          <li>All future 1.x updates</li>
+        </ul>
+        <a class="btn primary" data-checkout="pro" href="#" style="display:block;text-align:center">Buy Pro — $29</a>
+        <div class="tiny" style="text-align:center">License key by email · 14-day refund, no questions</div>
+      </div>
+      <div class="tier">
+        <h3>Team — 10 keys</h3>
+        <div class="amt">$149</div>
+        <ul class="feat">
+          <li>Everything in Pro, 10 seats</li>
+          <li>Use on internal/air-gapped machines</li>
+          <li>Commercial use in your company</li>
+          <li>Invoice on request</li>
+          <li>Priority email support</li>
+        </ul>
+        <a class="btn ghost" data-checkout="team" href="#" style="display:block;text-align:center">Buy Team</a>
+      </div>
+    </div>
+
+    <div class="proof" style="margin-top:26px">
+      <b>Try to catch it phoning home.</b><br>
+      <span style="color:var(--muted);font-size:14.6px">
+        Open the page → DevTools → Network → keep redacting. No requests. The whole app is one
+        <code>.html</code> file, which is also why the Pro download keeps working on a machine with no internet.
+      </span>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="sec-head"><h2>FAQ</h2></div>
+    <div class="faq">
+      <details open>
+        <summary>How do I know nothing is uploaded?</summary>
+        <p>There is no server component at all. The app is a single HTML file with no analytics, no fonts and no CDN. You can disconnect from the internet and it behaves identically — and you can check the Network tab yourself.</p>
+      </details>
+      <details>
+        <summary>Does it catch everything?</summary>
+        <p>No regex tool catches 100%, and we won't pretend otherwise. It reliably catches structured data (emails, phones, ID numbers, card numbers, IPs, keys, tokens) plus context-marked Chinese names and addresses. It also reads JSON keys, so a field like <code>"address": "…"</code> is caught even without a 地址 prefix. For free-form names and unusual formats, add your own regex rule.</p>
+      </details>
+      <details>
+        <summary>Can I get the original data back?</summary>
+        <p>Yes. Every placeholder is recorded in a mapping table you can download as CSV. Paste it into the Restore tab with the AI's answer and the real values are put back. The mapping file never leaves your machine — delete it when done.</p>
+      </details>
+      <details>
+        <summary>Will this make me compliant with GDPR / 个人信息保护法?</summary>
+        <p>It reduces what you send to third-party AI tools, which is a useful technical measure. It is not legal advice and does not by itself make a processing activity lawful — talk to your DPO about purpose, basis and retention.</p>
+      </details>
+      <details>
+        <summary>How is the license delivered?</summary>
+        <p>A key like <code>RL-XXXX-XXXX-XXXX</code> arrives by email right after payment. Paste it into the app once; it is verified offline and stored locally. No login, no seat server, nothing to expire.</p>
+      </details>
+      <details>
+        <summary>Can I use it at work?</summary>
+        <p>Pro covers commercial use by the purchaser. Team covers up to 10 people in one organisation.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="final">
+    <h2>Send the question, not the customer.</h2>
+    <p class="sub" style="margin-bottom:26px">Redact in the browser, paste into any AI, restore afterwards.</p>
+    <div class="cta">
+      <a class="btn primary" href="index.html">Open RedactLocal free</a>
+      <a class="btn ghost" data-checkout="pro" href="#">Buy Pro — $29</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="row">
+      <span>© <span id="yr"></span> RedactLocal</span>
+      <a href="index.html">App</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <span style="margin-left:auto">Not legal advice. Check your own compliance obligations.</span>
+    </div>
+  </footer>
+</div>
+<script>
+/* ===== ONE place to configure your checkout links ===== */
+const CHECKOUT = {
+  pro:  "https://YOUR-STORE.gumroad.com/l/redactlocal",   // <-- paste your Pro checkout URL
+  team: "https://YOUR-STORE.gumroad.com/l/redactlocal-team" // <-- paste your Team checkout URL
+};
+document.querySelectorAll("[data-checkout]").forEach(a => { a.href = CHECKOUT[a.dataset.checkout] || "#"; a.target = "_blank"; a.rel = "noopener"; });
+document.getElementById("yr").textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
